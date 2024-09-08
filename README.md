@@ -1,101 +1,152 @@
-# MyProject
+# Nx 19 & Angular 18 Environment Variable Management
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+This project demonstrates how to manage environment variables using Nx 19 and Angular 18. Follow the steps below to set up and configure environment variables for different environments (e.g., development and production).
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+## Table of Contents
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/tutorials/angular-standalone-tutorial?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+- [Creating an Nx Workspace](#creating-an-nx-workspace)
+- [Creating Environment Files](#creating-environment-files)
+- [Creating an Injection Token](#creating-an-injection-token)
+- [Providing the Injection Token in App Config](#providing-the-injection-token-in-app-config)
+- [Applying File Replacement for Different Environments](#applying-file-replacement-for-different-environments)
+- [Accessing the Environment Variable in the Application](#accessing-the-environment-variable-in-the-application)
+- [Running the Application](#running-the-application)
 
-## Run tasks
+## Creating an Nx Workspace
 
-To run the dev server for your app, use:
+To create an Nx workspace, run the following command and follow the interactive setup wizard. Choose Angular when prompted to set up an Angular project within the workspace.
 
-```sh
-npx nx serve my-project
+```bash
+npx create-nx-workspace my-workspace
 ```
 
-To create a production bundle:
+## Creating Environment Files
 
-```sh
-npx nx build my-project
+After setting up your project, create the `src/environments` folder and add the environment files.
+
+**`environment.ts`**
+
+```typescript
+import { EnvironmentModel } from './environment.model';
+
+export const environment: EnvironmentModel = {
+  apiUrl: 'local',
+};
 ```
 
-To see all available targets to run for a project, run:
+**`environment.prod.ts`**
 
-```sh
-npx nx show project my-project
-```
-        
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+```typescript
+import { EnvironmentModel } from './environment.model';
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-Use the plugin's generator to create new projects.
-
-To generate a new application, use:
-
-```sh
-npx nx g @nx/angular:app demo
+export const environment: EnvironmentModel = {
+  apiUrl: 'prod',
+};
 ```
 
-To generate a new library, use:
+## Creating an Injection Token
 
-```sh
-npx nx g @nx/angular:lib mylib
+Create an Injection Token to access the environment variables throughout the application.
+
+```typescript
+import { InjectionToken } from '@angular/core';
+import { EnvironmentModel } from './environment.model';
+
+export const APP_CONFIG = new InjectionToken<EnvironmentModel>(
+  'Application config'
+);
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+## Providing the Injection Token in App Config
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Provide the Injection Token in the `app.config.ts` file.
 
-## Set up CI!
+```typescript
+import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { appRoutes } from './app.routes';
+import { environment } from 'src/environments/environment';
+import { APP_CONFIG } from 'src/environments/app-config.token';
 
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideZoneChangeDetection({ eventCoalescing: true }),
+    provideRouter(appRoutes),
+    { provide: APP_CONFIG, useValue: environment },
+  ],
+};
 ```
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+## Applying File Replacement for Different Environments
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Configure `fileReplacements` in the `angular.json` or Nx configuration file to replace environment files based on the build configuration.
 
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+```json
+{
+  "name": "my-project",
+  "targets": {
+    "build": {
+      "executor": "@angular-devkit/build-angular:application",
+      "options": {
+        "outputPath": "dist/my-project"
+      },
+      "configurations": {
+        "production": {
+          "fileReplacements": [
+            {
+              "replace": "src/environments/environment.ts",
+              "with": "src/environments/environment.prod.ts"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
 ```
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Accessing the Environment Variable in the Application
 
-## Install Nx Console
+Access the environment variable within your application using the Injection Token.
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+```typescript
+import { Component, inject } from '@angular/core';
+import { RouterModule } from '@angular/router';
+import { APP_CONFIG } from 'src/environments/app-config.token';
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+@Component({
+  standalone: true,
+  imports: [RouterModule],
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+})
+export class AppComponent {
+  private readonly appConfig = inject(APP_CONFIG);
 
-## Useful links
+  /** consturctor injection */
+  // constructor(@Inject(APP_CONFIG) appConfig: EnvironmentModel) {}
+  constructor() {
+    console.log(this.appConfig.apiUrl); // Outputs 'local' in development and 'prod' in production
+  }
+}
+```
 
-Learn more:
+## Running the Application
 
-- [Learn more about this workspace setup](https://nx.dev/getting-started/tutorials/angular-standalone-tutorial?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Use the following command to run the project in development mode:
 
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```bash
+nx serve
+```
+
+To run the project in production mode, use:
+
+```bash
+nx serve --c=production
+```
+
+---
+
+This project demonstrates how to effectively manage environment variables in an Nx workspace with Angular. By following these steps, you can easily configure your application for different environments.
+
+---

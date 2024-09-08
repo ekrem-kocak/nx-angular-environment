@@ -1,14 +1,19 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { NxWelcomeComponent } from './nx-welcome.component';
+import { APP_CONFIG } from 'src/environments/app-config.token';
 
 @Component({
   standalone: true,
-  imports: [NxWelcomeComponent, RouterModule],
+  imports: [RouterModule],
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrl: './app.component.scss',
 })
 export class AppComponent {
-  title = 'my-project';
+  private readonly appConfig = inject(APP_CONFIG);
+
+  /** consturctor injection */
+  // constructor(@Inject(APP_CONFIG) appConfig: EnvironmentModel) {}
+  constructor() {
+    console.log(this.appConfig.apiUrl);
+  }
 }
